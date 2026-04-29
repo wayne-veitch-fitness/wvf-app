@@ -19,4 +19,9 @@
 
   html {
     background-color: var(--bg);
-    c
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+}
