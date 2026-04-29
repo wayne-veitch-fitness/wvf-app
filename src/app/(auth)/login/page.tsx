@@ -34,7 +34,7 @@ export default function LoginPage() {
       .eq('id', data.user.id)
       .single()
 
-    if ((profile as { role: string } | null)?.role === 'coach') {
+    if (profile?.role === 'coach') {
       router.push('/coach')
     } else {
       router.push('/dashboard')

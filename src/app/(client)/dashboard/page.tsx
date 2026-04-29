@@ -19,7 +19,7 @@ export default async function ClientDashboardPage() {
     .eq('id', user!.id)
     .single()
 
-  if ((profile as { role: string } | null)?.role === 'coach') {
+  if (profile?.role === 'coach') {
     redirect('/coach')
   }
 
