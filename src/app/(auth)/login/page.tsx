@@ -28,14 +28,13 @@ export default function LoginPage() {
       return
     }
 
-    // Fetch the user's role from profiles to redirect appropriately
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
       .single()
 
-    if (profile?.role === 'coach') {
+    if ((profile as { role: string } | null)?.role === 'coach') {
       router.push('/coach')
     } else {
       router.push('/dashboard')
@@ -45,7 +44,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
       <div className="w-full max-w-sm">
-        {/* Logo / brand */}
         <div className="text-center mb-8">
           <div className="text-2xl font-bold tracking-widest text-[var(--text)]">WVF</div>
           <div className="text-sm text-[var(--text-muted)] mt-1">Wayne Veitch Fitness</div>
@@ -56,38 +54,29 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wide"
-              >
+              <label className="block text-sm font-medium text-[var(--text)] mb-1">
                 Email
               </label>
               <input
-                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
-                className="w-full px-3 py-2.5 border border-[var(--border-strong)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                className="w-full border border-[var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wide"
-              >
+              <label className="block text-sm font-medium text-[var(--text)] mb-1">
                 Password
               </label>
               <input
-                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
-                className="w-full px-3 py-2.5 border border-[var(--border-strong)] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                className="w-full border border-[var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
               />
             </div>
 
@@ -107,4 +96,10 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-[var(--text-subtle)] m
+        <p className="text-center text-xs text-[var(--text-subtle)] mt-6">
+          Contact Wayne to get access.
+        </p>
+      </div>
+    </div>
+  )
+}
