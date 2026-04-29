@@ -107,10 +107,4 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-[var(--text-subtle)] mt-6">
-          New clients — Wayne will send you an invite.
-        </p>
-      </div>
-    </div>
-  )
-}
+        <p className="text-center text-xs text-[var(--text-subtle)] m
