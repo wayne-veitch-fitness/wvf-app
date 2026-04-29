@@ -15,11 +15,11 @@ export default async function CoachDashboardPage() {
   // Non-null assertion: redirect() returns `never` so user is always defined here
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('*')
     .eq('id', user!.id)
     .single()
 
-  if (profile?.role !== 'coach') {
+  if ((profile as { role: string } | null)?.role !== 'coach') {
     redirect('/dashboard')
   }
 
