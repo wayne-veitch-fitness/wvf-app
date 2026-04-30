@@ -240,7 +240,10 @@ export default function CheckinPage() {
       <div className="px-5 py-5 max-w-lg mx-auto">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-bold">Weekly check-in</h1>
-          {existing && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Editing</span>}
+          {existing
+            ? <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Editing</span>
+            : <Link href="/dashboard/checkin/history" className="text-xs text-[var(--accent)] font-medium">History →</Link>
+          }
         </div>
         <p className="text-xs text-[var(--text-muted)] mb-5">
           Week of {monday.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
