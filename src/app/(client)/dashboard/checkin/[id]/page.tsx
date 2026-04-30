@@ -72,7 +72,7 @@ export default async function CheckinDetailPage({ params }: { params: { id: stri
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <span className="text-sm font-bold tracking-widest">WVF</span>
+        <img src="/logos/icon-navy.png" alt="Wayne Veitch Fitness" className="h-7 w-auto" />
       </header>
 
       <div className="px-5 py-5 max-w-lg mx-auto">

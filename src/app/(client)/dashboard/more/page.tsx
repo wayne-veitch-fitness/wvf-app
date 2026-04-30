@@ -14,7 +14,7 @@ export default function MorePage() {
   return (
     <div>
       <header className="bg-white border-b border-[var(--border)] px-5 py-4">
-        <span className="text-sm font-semibold tracking-widest">WVF</span>
+        <img src="/logos/icon-navy.png" alt="Wayne Veitch Fitness" className="h-7 w-auto" />
       </header>
       <div className="px-5 py-6 max-w-lg mx-auto space-y-2">
         <h1 className="text-2xl font-bold mb-4">More</h1>

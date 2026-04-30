@@ -41,7 +41,7 @@ export default async function ClientDashboardPage() {
   return (
     <div className="pb-24">
       <header className="bg-white border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
-        <span className="text-sm font-bold tracking-widest">WVF</span>
+        <img src="/logos/icon-navy.png" alt="Wayne Veitch Fitness" className="h-7 w-auto" />
         <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center">
           {profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() ?? '?'}
         </div>
