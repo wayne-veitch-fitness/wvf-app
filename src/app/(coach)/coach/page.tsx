@@ -9,24 +9,19 @@ export default async function CoachDashboardPage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (profile?.role !== 'coach') redirect('/dashboard')
 
-  // Fetch real stats
   const { count: clientCount } = await supabase
     .from('clients').select('*', { count: 'exact', head: true }).eq('is_active', true)
 
   const { count: programCount } = await supabase
     .from('programs').select('*', { count: 'exact', head: true })
 
-  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const { count: pendingCheckins } = await supabase
-    .from('checkins').select('*', { count: 'exact', head: true })
-    .is('reviewed_at', null)
-    .gte('week_starting', oneWeekAgo)
+    .from('checkins').select('*', { count: 'exact', head: true }).is('reviewed_at', null)
 
-  // Recent check-ins (last 5 unreviewed)
   const { data: recentCheckins } = await supabase
     .from('checkins')
     .select(`
-      id, week_starting, overall_rating, submitted_at, comments,
+      id, week_starting, overall_rating, comments,
       clients!inner ( profiles!inner ( full_name ) )
     `)
     .is('reviewed_at', null)
@@ -73,21 +68,28 @@ export default async function CoachDashboardPage() {
                 const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
                 const date = new Date(c.week_starting).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
                 return (
-                  <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                      {initials}
+                  <Link key={c.id} href={`/coach/checkins/${c.id}`}>
+                    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">{name}</div>
+                        <div className="text-xs text-[var(--text-muted)] truncate">{c.comments}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-sm font-bold">{c.overall_rating}/10</div>
+                        <div className="text-xs text-[var(--text-muted)]">{date}</div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{name}</div>
-                      <div className="text-xs text-[var(--text-muted)] truncate">{c.comments}</div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-bold">{c.overall_rating}/10</div>
-                      <div className="text-xs text-[var(--text-muted)]">{date}</div>
-                    </div>
-                  </div>
+                  </Link>
                 )
               })}
+              <Link href="/coach/checkins">
+                <div className="px-4 py-2.5 text-xs text-[var(--accent)] font-medium hover:bg-gray-50 transition-colors cursor-pointer">
+                  View all check-ins →
+                </div>
+              </Link>
             </div>
           ) : (
             <div className="bg-white border border-[var(--border)] rounded-xl p-4 text-sm text-[var(--text-muted)]">

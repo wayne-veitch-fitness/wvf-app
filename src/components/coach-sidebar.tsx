@@ -4,17 +4,18 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
-  { label: 'Dashboard', href: '/coach' },
-  { label: 'Clients', href: '/coach/clients' },
-  { label: 'Programs', href: '/coach/programs' },
-  { label: 'Exercise library', href: '/coach/exercises' },
-  { label: 'Resources', href: '/coach/resources' },
-  { label: 'Settings', href: '/coach/settings' },
+  { label: 'Dashboard',       href: '/coach' },
+  { label: 'Check-ins',       href: '/coach/checkins' },
+  { label: 'Clients',         href: '/coach/clients' },
+  { label: 'Programs',        href: '/coach/programs' },
+  { label: 'Exercise library',href: '/coach/exercises' },
+  { label: 'Resources',       href: '/coach/resources' },
+  { label: 'Settings',        href: '/coach/settings' },
 ]
 
 export default function CoachSidebar() {
   const pathname = usePathname()
-  const router = useRouter()
+  const router   = useRouter()
   const supabase = createClient()
 
   async function handleLogout() {
