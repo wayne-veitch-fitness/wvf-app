@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function ClientsPage() {
   const supabase = await createServerClient()
@@ -59,12 +60,12 @@ export default async function ClientsPage() {
               return (
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/coach/clients/${c.id}`} className="flex items-center gap-3 group">
                       <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                         {initials}
                       </div>
-                      <span className="font-medium">{name}</span>
-                    </div>
+                      <span className="font-medium group-hover:text-[var(--accent)] transition-colors">{name}</span>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-[var(--text-muted)]">{c.package_label ?? '—'}</td>
                   <td className="px-4 py-3 text-[var(--text-muted)]">{c.checkin_day != null ? days[c.checkin_day] : '—'}</td>
