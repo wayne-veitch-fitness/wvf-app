@@ -9,37 +9,75 @@ export default async function ClientDashboardPage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (profile?.role === 'coach') redirect('/coach')
 
+  const { data: client } = await supabase
+    .from('clients').select('id').eq('profile_id', user.id).single()
+
+  let lastCheckin = null
+  let programName = null
+
+  if (client) {
+    const { data: checkins } = await supabase
+      .from('checkins')
+      .select('week_starting, overall_rating, weight_kg, comments')
+      .eq('client_id', client.id)
+      .order('week_starting', { ascending: false })
+      .limit(1)
+    lastCheckin = checkins?.[0] ?? null
+
+    const { data: cp } = await supabase
+      .from('client_programs')
+      .select('programs(name)')
+      .eq('client_id', client.id)
+      .eq('is_active', true)
+      .single()
+    programName = (cp?.programs as any)?.name ?? null
+  }
+
+  const name = profile?.full_name?.split(' ')[0] ?? 'there'
+  const checkinDate = lastCheckin
+    ? new Date(lastCheckin.week_starting).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+    : null
+
   return (
-    <div>
+    <div className="pb-24">
       <header className="bg-white border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
-        <span className="text-sm font-semibold tracking-widest">WVF</span>
-        <div className="w-7 h-7 rounded-full bg-[var(--placeholder)] flex items-center justify-center text-xs text-[var(--text-muted)] font-medium">
-          {profile?.full_name?.[0] ?? '?'}
+        <span className="text-sm font-bold tracking-widest">WVF</span>
+        <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center">
+          {profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() ?? '?'}
         </div>
       </header>
 
       <div className="px-5 py-6 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold mb-1">
-          Hey{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
-        </h1>
-        <p className="text-sm text-[var(--text-muted)] mb-6">
-          {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
+        <h1 className="text-2xl font-bold mb-1">Hey {name} 👋</h1>
+        <p className="text-sm text-[var(--text-muted)] mb-6">Here's your overview for this week.</p>
 
-        <div className="space-y-3">
-          <div className="bg-white border border-[var(--border)] rounded-xl p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">Today&apos;s workout</div>
-            <p className="text-sm text-[var(--text-muted)]">No program assigned yet.</p>
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="bg-white border border-[var(--border)] rounded-xl px-4 py-4">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-1">Program</div>
+            <div className="text-sm font-semibold leading-tight">{programName ?? 'Not assigned'}</div>
           </div>
-          <div className="bg-white border border-[var(--border)] rounded-xl p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">Weekly check-in</div>
-            <p className="text-sm text-[var(--text-muted)]">Nothing due yet.</p>
-          </div>
-          <div className="bg-white border border-[var(--border)] rounded-xl p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">Today&apos;s food</div>
-            <p className="text-sm text-[var(--text-muted)]">Nothing logged yet.</p>
+          <div className="bg-white border border-[var(--border)] rounded-xl px-4 py-4">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-1">Last check-in</div>
+            <div className="text-sm font-semibold">{checkinDate ?? '—'}</div>
+            {lastCheckin?.overall_rating && (
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">{lastCheckin.overall_rating}/10 overall</div>
+            )}
           </div>
         </div>
+
+        {lastCheckin?.weight_kg && (
+          <div className="bg-white border border-[var(--border)] rounded-xl px-4 py-4 mb-3">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-1">Current weight</div>
+            <div className="text-2xl font-bold">{lastCheckin.weight_kg} <span className="text-sm font-normal text-[var(--text-muted)]">kg</span></div>
+          </div>
+        )}
+
+        {lastCheckin?.comments && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-3">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-blue-400 mb-1">Your last note</div>
+            <div className="text-sm text-blue-800 italic">"{lastCheckin.comments}"</div>
+          </div>
+        )}
       </div>
     </div>
   )

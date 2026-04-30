@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function ProgramsPage() {
   const supabase = await createServerClient()
@@ -8,17 +9,56 @@ export default async function ProgramsPage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (profile?.role !== 'coach') redirect('/dashboard')
 
+  const { data: programs } = await supabase
+    .from('programs')
+    .select(`
+      id, name, description, updated_at,
+      program_days ( id ),
+      client_programs ( id, is_active )
+    `)
+    .order('created_at', { ascending: false })
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Programs</h1>
+        <div>
+          <h1 className="text-xl font-semibold">Programs</h1>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">{programs?.length ?? 0} programs</p>
+        </div>
         <button className="bg-[var(--accent)] text-white text-sm px-4 py-2 rounded-md font-medium">
           + New program
         </button>
       </div>
-      <div className="bg-white border border-[var(--border)] rounded-xl p-8 text-center">
-        <p className="text-sm text-[var(--text-muted)]">No programs yet.</p>
-        <p className="text-xs text-[var(--text-subtle)] mt-1">Build a program and assign it to your clients.</p>
+
+      <div className="grid grid-cols-1 gap-3">
+        {programs?.map((p: any) => {
+          const dayCount = p.program_days?.length ?? 0
+          const clientCount = p.client_programs?.filter((cp: any) => cp.is_active)?.length ?? 0
+          const updated = new Date(p.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+          const firstLine = p.description?.split('\n')[0] ?? ''
+          return (
+            <Link key={p.id} href={`/coach/programs/${p.id}`}>
+              <div className="bg-white border border-[var(--border)] rounded-xl px-5 py-4 hover:border-[var(--accent)] transition-colors cursor-pointer">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm">{p.name}</div>
+                    {firstLine && (
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5 truncate">{firstLine}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] flex-shrink-0">
+                    <span>{dayCount} day{dayCount !== 1 ? 's' : ''}</span>
+                    <span className="font-medium text-[var(--text)]">{clientCount} client{clientCount !== 1 ? 's' : ''}</span>
+                    <span>Updated {updated}</span>
+                    <svg className="w-4 h-4 text-[var(--text-subtle)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
