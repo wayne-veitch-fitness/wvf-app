@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const WEEKLY_METRICS = [
   { key: 'sleep_rating',     label: 'Sleep' },
@@ -41,6 +42,83 @@ function RatingButtons({ value, onChange }: { value: number; onChange: (v: numbe
   )
 }
 
+function AlreadySubmitted({ checkin, monday, onEdit }: { checkin: any; monday: Date; onEdit: () => void }) {
+  const date = monday.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })
+  const overall = checkin.overall_rating
+  const colour = overall >= 8 ? 'bg-green-100 text-green-700'
+    : overall >= 5 ? 'bg-amber-100 text-amber-700'
+    : 'bg-red-100 text-red-600'
+
+  return (
+    <div className="pb-24">
+      <header className="bg-white border-b border-[var(--border)] px-5 py-4">
+        <span className="text-sm font-bold tracking-widest">WVF</span>
+      </header>
+      <div className="px-5 py-6 max-w-lg mx-auto">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-base font-bold">Check-in submitted</div>
+            <div className="text-xs text-[var(--text-muted)]">Week of {date}</div>
+          </div>
+        </div>
+
+        {/* This week's summary */}
+        <div className="bg-white border border-[var(--border)] rounded-xl divide-y divide-[var(--border)] mb-3">
+          {checkin.weight_kg && (
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-sm text-[var(--text-muted)]">Weight</span>
+              <span className="text-sm font-semibold">{checkin.weight_kg} kg</span>
+            </div>
+          )}
+          {overall && (
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-sm text-[var(--text-muted)]">Overall rating</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colour}`}>{overall}/10</span>
+            </div>
+          )}
+          <div className="px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-[var(--text-muted)]">Wayne's reply</span>
+            {checkin.coach_reply
+              ? <span className="text-xs font-medium text-green-600">✓ Replied</span>
+              : <span className="text-xs text-[var(--text-subtle)]">Pending</span>
+            }
+          </div>
+        </div>
+
+        {checkin.coach_reply && (
+          <div className="bg-[var(--accent)] rounded-xl px-4 py-4 mb-3">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mb-2">Wayne's reply</div>
+            <p className="text-sm text-white leading-relaxed">{checkin.coach_reply}</p>
+          </div>
+        )}
+
+        <div className="space-y-2 mt-4">
+          <Link
+            href="/dashboard/checkin/history"
+            className="w-full bg-white border border-[var(--border)] rounded-xl py-3 text-sm font-medium text-center flex items-center justify-center gap-2 hover:border-[var(--accent)] transition-colors"
+          >
+            View all check-ins
+            <svg className="w-4 h-4 text-[var(--text-subtle)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+          <button
+            onClick={onEdit}
+            className="w-full text-sm text-[var(--text-muted)] py-2"
+          >
+            Edit this week's check-in
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CheckinPage() {
   const supabase = createClient()
   const router = useRouter()
@@ -51,6 +129,8 @@ export default function CheckinPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted]   = useState(false)
   const [existing, setExisting]     = useState<any>(null)
+  const [showForm, setShowForm]     = useState(false)
+  const [loading, setLoading]       = useState(true)
 
   const today = new Date()
   const monday = new Date(today)
@@ -62,7 +142,7 @@ export default function CheckinPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       const { data: client } = await supabase.from('clients').select('id').eq('profile_id', user.id).single()
-      if (!client) return
+      if (!client) { setLoading(false); return }
       setClientId(client.id)
 
       const { data: prev } = await supabase
@@ -75,6 +155,7 @@ export default function CheckinPage() {
         setWeight(prev.weight_kg?.toString() ?? '')
         setComments(prev.comments ?? '')
       }
+      setLoading(false)
     }
     init()
   }, [])
@@ -99,6 +180,19 @@ export default function CheckinPage() {
     setSubmitted(true)
   }
 
+  if (loading) {
+    return (
+      <div className="pb-24">
+        <header className="bg-white border-b border-[var(--border)] px-5 py-4">
+          <span className="text-sm font-bold tracking-widest">WVF</span>
+        </header>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
   if (submitted) {
     return (
       <div className="pb-24">
@@ -112,17 +206,35 @@ export default function CheckinPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold mb-2">Check-in submitted!</h2>
-          <p className="text-sm text-[var(--text-muted)]">Wayne will review this and get back to you.</p>
+          <p className="text-sm text-[var(--text-muted)] mb-6">Wayne will review this and get back to you.</p>
+          <Link
+            href="/dashboard/checkin/history"
+            className="text-sm text-[var(--accent)] font-medium"
+          >
+            View check-in history →
+          </Link>
         </div>
       </div>
     )
+  }
+
+  // Already submitted this week and not in edit mode
+  if (existing && !showForm) {
+    return <AlreadySubmitted checkin={existing} monday={monday} onEdit={() => setShowForm(true)} />
   }
 
   const allRated = WEEKLY_METRICS.every(m => ratings[m.key])
 
   return (
     <div className="pb-24">
-      <header className="bg-white border-b border-[var(--border)] px-5 py-4">
+      <header className="bg-white border-b border-[var(--border)] px-5 py-4 flex items-center gap-3">
+        {showForm && existing && (
+          <button onClick={() => setShowForm(false)} className="text-[var(--text-muted)]">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
         <span className="text-sm font-bold tracking-widest">WVF</span>
       </header>
       <div className="px-5 py-5 max-w-lg mx-auto">
