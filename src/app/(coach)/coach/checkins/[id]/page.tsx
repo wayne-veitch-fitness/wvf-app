@@ -66,10 +66,19 @@ export default function CheckinDetailPage({ params }: { params: { id: string } }
 
   async function handleSave() {
     setSaving(true)
+    const isFirstReply = !checkin.reviewed_at
     await supabase
       .from('checkins')
       .update({ coach_reply: reply, reviewed_at: new Date().toISOString() })
       .eq('id', params.id)
+    // Email the client on first reply only
+    if (isFirstReply) {
+      fetch('/api/email/coach-replied', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkinId: params.id }),
+      }).catch(() => {})
+    }
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)

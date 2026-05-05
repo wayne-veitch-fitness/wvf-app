@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { resend, FROM, APP_URL, emailWrapper } from '@/lib/email'
+
+export async function POST(req: NextRequest) {
+  try {
+    // Must be authenticated
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { checkinId } = await req.json()
+    if (!checkinId) return NextResponse.json({ error: 'Missing checkinId' }, { status: 400 })
+
+    const admin = createAdminClient()
+
+    // Get checkin + client profile_id
+    const { data: checkin } = await admin
+      .from('checkins')
+      .select('*, clients!inner(profile_id, profiles!inner(full_name))')
+      .eq('id', checkinId)
+      .single()
+
+    if (!checkin) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const profileId  = checkin.clients?.profile_id
+    const clientName = checkin.clients?.profiles?.full_name ?? 'there'
+    const firstName  = clientName.split(' ')[0]
+    const weekDate   = new Date(checkin.week_starting).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+    const checkinUrl = `${APP_URL}/dashboard/checkin`
+
+    // Get client's email from auth
+    const { data: authUser } = await admin.auth.admin.getUserById(profileId)
+    const clientEmail = authUser?.user?.email
+
+    if (!clientEmail) {
+      console.warn(`No email found for profile ${profileId}`)
+      return NextResponse.json({ ok: true, skipped: true })
+    }
+
+    const html = emailWrapper("Wayne's replied", `
+      <h2 style="margin:0 0 4px;font-size:20px;color:#111827;">Hey ${firstName}, Wayne has replied!</h2>
+      <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">Your check-in for the week of ${weekDate} has been reviewed.</p>
+
+      ${checkin.coach_reply ? `
+      <div style="background:#20243D;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 6px;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Wayne's reply</p>
+        <p style="margin:0;font-size:14px;color:white;line-height:1.6;">${checkin.coach_reply.replace(/\n/g, '<br>')}</p>
+      </div>
+      ` : ''}
+
+      <a href="${checkinUrl}" style="display:block;background:#20243D;color:white;text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+        Open the app →
+      </a>
+    `)
+
+    await resend.emails.send({
+      from: FROM,
+      to: clientEmail,
+      subject: `Wayne has replied to your check-in`,
+      html,
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('Email error:', err)
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+  }
+}

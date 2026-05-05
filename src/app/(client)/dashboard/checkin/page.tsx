@@ -172,7 +172,16 @@ export default function CheckinPage() {
     if (existing) {
       await supabase.from('checkins').update(payload).eq('id', existing.id)
     } else {
-      await supabase.from('checkins').insert(payload)
+      const { data: inserted } = await supabase
+        .from('checkins').insert(payload).select('id').single()
+      // Fire-and-forget — don't block the UI on email success/failure
+      if (inserted?.id) {
+        fetch('/api/email/checkin-submitted', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkinId: inserted.id }),
+        }).catch(() => {})
+      }
     }
     setSubmitting(false)
     setSubmitted(true)
