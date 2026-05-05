@@ -151,6 +151,12 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
     await loadProgram()
   }
 
+  async function handleDelete() {
+    if (!confirm(`Delete "${program?.name}"? This will remove all days and exercises. This cannot be undone.`)) return
+    await supabase.from('programs').delete().eq('id', params.id)
+    router.push('/coach/programs')
+  }
+
   function repsLabel(ex: any) {
     if (ex.duration_seconds) return `${ex.duration_seconds}s`
     if (ex.reps_min && ex.reps_max && ex.reps_min !== ex.reps_max) return `${ex.reps_min}–${ex.reps_max}`
@@ -195,6 +201,14 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
       <div className="flex items-start justify-between gap-3 mb-2">
         <h1 className="text-xl font-semibold leading-tight">{program.name}</h1>
         <div className="flex gap-2 flex-shrink-0">
+          {editMode && (
+            <button
+              onClick={handleDelete}
+              className="text-sm border border-red-200 text-red-500 px-3 py-1.5 rounded-md font-medium hover:bg-red-50 transition-colors"
+            >
+              Delete
+            </button>
+          )}
           <button
             onClick={openAssign}
             className="text-sm border border-[var(--border)] px-3 py-1.5 rounded-md font-medium hover:border-[var(--accent)] transition-colors"
