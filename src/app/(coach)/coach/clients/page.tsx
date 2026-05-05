@@ -128,8 +128,8 @@ export default function ClientsPage() {
         </div>
       ) : (
         <>
-          <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden mb-4">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden mb-4 overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[10px] uppercase tracking-widest text-[var(--text-subtle)]">
                   <th className="text-left px-4 py-3 font-medium">Client</th>
