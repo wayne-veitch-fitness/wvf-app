@@ -1,26 +1,217 @@
-import { createServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
-export default async function FoodPage() {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+interface DiaryEntry {
+  id?: string
+  breakfast: string
+  lunch: string
+  dinner: string
+  snacks: string
+  water_litres: string
+}
+
+const MEALS = [
+  { key: 'breakfast', label: 'Breakfast', placeholder: 'e.g. 2 eggs, toast, black coffee...' },
+  { key: 'lunch',     label: 'Lunch',     placeholder: 'e.g. chicken salad, sparkling water...' },
+  { key: 'dinner',    label: 'Dinner',    placeholder: 'e.g. salmon, rice, roasted veggies...' },
+  { key: 'snacks',    label: 'Snacks',    placeholder: 'e.g. protein bar, handful of almonds...' },
+] as const
+
+function todayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function addDays(dateStr: string, n: number): string {
+  const [y, m, day] = dateStr.split('-').map(Number)
+  const d = new Date(y, m - 1, day)
+  d.setDate(d.getDate() + n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatDateLabel(dateStr: string): string {
+  const today = todayStr()
+  const yesterday = addDays(today, -1)
+  if (dateStr === today) return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  const [y, m, day] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, day).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+const EMPTY: DiaryEntry = { breakfast: '', lunch: '', dinner: '', snacks: '', water_litres: '' }
+
+export default function FoodPage() {
+  const supabase = createClient()
+  const router = useRouter()
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [date, setDate] = useState(todayStr())
+  const [entry, setEntry] = useState<DiaryEntry>(EMPTY)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingRef = useRef<Partial<DiaryEntry>>({})
+  const clientIdRef = useRef<string | null>(null)
+  const dateRef = useRef(date)
+
+  // Keep refs in sync
+  useEffect(() => { dateRef.current = date }, [date])
+  useEffect(() => { clientIdRef.current = clientId }, [clientId])
+
+  // Init: get client id
+  useEffect(() => {
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      const { data: client } = await supabase
+        .from('clients').select('id').eq('profile_id', user.id).single()
+      if (!client) { router.push('/dashboard'); return }
+      setClientId(client.id)
+    }
+    init()
+  }, [])
+
+  // Load entry when clientId or date changes
+  useEffect(() => {
+    if (!clientId) return
+    loadEntry(clientId, date)
+  }, [clientId, date])
+
+  async function loadEntry(cid: string, d: string) {
+    setLoading(true)
+    const { data } = await supabase
+      .from('food_diary')
+      .select('*')
+      .eq('client_id', cid)
+      .eq('diary_date', d)
+      .maybeSingle()
+    setEntry(data ? {
+      id: data.id,
+      breakfast: data.breakfast ?? '',
+      lunch: data.lunch ?? '',
+      dinner: data.dinner ?? '',
+      snacks: data.snacks ?? '',
+      water_litres: data.water_litres != null ? String(data.water_litres) : '',
+    } : { ...EMPTY })
+    setLoading(false)
+  }
+
+  const scheduleAutosave = useCallback((field: string, value: string) => {
+    pendingRef.current = { ...pendingRef.current, [field]: value }
+    setSaving(true)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      const cid = clientIdRef.current
+      const d = dateRef.current
+      if (!cid) return
+      const pending = { ...pendingRef.current }
+      pendingRef.current = {}
+      const payload: Record<string, unknown> = { client_id: cid, diary_date: d, updated_at: new Date().toISOString() }
+      for (const [k, v] of Object.entries(pending)) {
+        if (k === 'water_litres') {
+          payload[k] = v === '' ? null : parseFloat(v as string)
+        } else {
+          payload[k] = v || null
+        }
+      }
+      await supabase.from('food_diary').upsert(payload, { onConflict: 'client_id,diary_date' })
+      setSaving(false)
+    }, 1500)
+  }, [])
+
+  function handleChange(field: string, value: string) {
+    setEntry(prev => ({ ...prev, [field]: value }))
+    scheduleAutosave(field, value)
+  }
+
+  const isToday = date === todayStr()
+
+  if (!clientId) return null
 
   return (
     <div>
       <header className="bg-white border-b border-[var(--border)] px-5 py-4">
         <img src="/logos/icon-navy.png" alt="Wayne Veitch Fitness" className="h-7 w-auto" />
       </header>
-      <div className="px-5 py-6 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Food diary</h1>
-        <div className="space-y-3">
-          {['Breakfast', 'Lunch', 'Dinner', 'Snacks'].map((meal) => (
-            <div key={meal} className="bg-white border border-[var(--border)] rounded-xl p-4">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">{meal}</div>
-              <p className="text-sm text-[var(--text-muted)]">Nothing logged yet.</p>
-            </div>
-          ))}
+      <div className="px-5 py-6 max-w-lg mx-auto pb-24">
+
+        {/* Header + date navigation */}
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="text-2xl font-bold flex-1">Food diary</h1>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setDate(d => addDays(d, -1))}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span className="text-sm font-medium text-[var(--text-muted)] w-20 text-center">
+              {formatDateLabel(date)}
+            </span>
+            <button
+              onClick={() => setDate(d => addDays(d, 1))}
+              disabled={isToday}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Autosave indicator */}
+        <div className="h-5 mb-3 flex items-center">
+          {saving && (
+            <span className="text-[11px] text-[var(--text-subtle)] flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              Saving...
+            </span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {MEALS.map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-1.5">
+                  {label}
+                </label>
+                <textarea
+                  value={entry[key as keyof DiaryEntry] as string}
+                  onChange={e => handleChange(key, e.target.value)}
+                  placeholder={placeholder}
+                  rows={3}
+                  className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)] resize-none bg-white"
+                />
+              </div>
+            ))}
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-1.5">
+                Water (litres)
+              </label>
+              <input
+                type="number"
+                value={entry.water_litres}
+                onChange={e => handleChange('water_litres', e.target.value)}
+                placeholder="e.g. 2.5"
+                step="0.1"
+                min="0"
+                max="20"
+                className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)] bg-white"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

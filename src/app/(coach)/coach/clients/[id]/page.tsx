@@ -128,16 +128,18 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   const [client,    setClient]    = useState<any>(null)
   const [checkins,  setCheckins]  = useState<any[]>([])
   const [program,   setProgram]   = useState<any>(null)
+  const [foodDiary, setFoodDiary] = useState<any[]>([])
   const [loading,   setLoading]   = useState(true)
   const [showEdit,  setShowEdit]  = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [editForm, setEditForm] = useState({ package_label: '', checkin_day: '' })
+  const [expandedDiaryDate, setExpandedDiaryDate] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       const { data: c } = await supabase
         .from('clients')
-        .select('id, package_label, checkin_day, profiles!inner(full_name, avatar_url)')
+        .select('id, package_label, checkin_day, is_active, profiles!inner(full_name, avatar_url)')
         .eq('id', params.id)
         .single()
       if (!c) { router.push('/coach/clients'); return }
@@ -157,6 +159,14 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         .eq('is_active', true)
         .single()
       setProgram((cp?.programs as any) ?? null)
+
+      const { data: fd } = await supabase
+        .from('food_diary')
+        .select('*')
+        .eq('client_id', params.id)
+        .order('diary_date', { ascending: false })
+        .limit(14)
+      setFoodDiary(fd ?? [])
 
       setLoading(false)
     }
@@ -273,6 +283,58 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         <WeightChart checkins={checkins} />
         <RatingsOverview checkins={checkins} />
       </div>
+
+      {/* Food Diary */}
+      {foodDiary.length > 0 && (
+        <div className="mb-5">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">
+            Food diary
+          </div>
+          <div className="bg-white border border-[var(--border)] rounded-xl divide-y divide-[var(--border)] overflow-hidden">
+            {foodDiary.map(fd => {
+              const isOpen = expandedDiaryDate === fd.diary_date
+              const [y, m, day] = fd.diary_date.split('-').map(Number)
+              const dateLabel = new Date(y, m - 1, day).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+              const hasAny = fd.breakfast || fd.lunch || fd.dinner || fd.snacks
+              return (
+                <div key={fd.diary_date}>
+                  <button
+                    onClick={() => setExpandedDiaryDate(isOpen ? null : fd.diary_date)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <svg className={`w-3.5 h-3.5 text-[var(--text-subtle)] flex-shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="text-sm flex-1">{dateLabel}</span>
+                    {!hasAny && <span className="text-xs text-[var(--text-subtle)]">Nothing logged</span>}
+                    {fd.water_litres != null && (
+                      <span className="text-xs text-[var(--text-muted)]">💧 {fd.water_litres}L</span>
+                    )}
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-3 pt-2 space-y-3 border-t border-[var(--border)] bg-gray-50">
+                      {[
+                        { label: 'Breakfast', value: fd.breakfast },
+                        { label: 'Lunch',     value: fd.lunch },
+                        { label: 'Dinner',    value: fd.dinner },
+                        { label: 'Snacks',    value: fd.snacks },
+                      ].filter(x => x.value).map(x => (
+                        <div key={x.label}>
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-subtle)] mb-0.5">{x.label}</div>
+                          <div className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">{x.value}</div>
+                        </div>
+                      ))}
+                      {!hasAny && (
+                        <p className="text-sm text-[var(--text-subtle)] italic">No meals logged for this day.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Check-in history */}
       <div>
