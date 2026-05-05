@@ -125,10 +125,13 @@ function RatingsOverview({ checkins }: { checkins: any[] }) {
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
   const router   = useRouter()
-  const [client,   setClient]   = useState<any>(null)
-  const [checkins, setCheckins] = useState<any[]>([])
-  const [program,  setProgram]  = useState<any>(null)
-  const [loading,  setLoading]  = useState(true)
+  const [client,    setClient]    = useState<any>(null)
+  const [checkins,  setCheckins]  = useState<any[]>([])
+  const [program,   setProgram]   = useState<any>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [showEdit,  setShowEdit]  = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editForm, setEditForm] = useState({ package_label: '', checkin_day: '' })
 
   useEffect(() => {
     async function load() {
@@ -159,6 +162,28 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
     }
     load()
   }, [params.id])
+
+  async function handleEdit() {
+    setSavingEdit(true)
+    await supabase.from('clients').update({
+      package_label: editForm.package_label.trim() || null,
+      checkin_day: editForm.checkin_day !== '' ? parseInt(editForm.checkin_day) : null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', params.id)
+    const { data: updated } = await supabase
+      .from('clients').select('id, package_label, checkin_day, is_active, profiles!inner(full_name, avatar_url)').eq('id', params.id).single()
+    setClient(updated)
+    setSavingEdit(false)
+    setShowEdit(false)
+  }
+
+  async function handleToggleActive() {
+    const newState = !client.is_active
+    const msg = newState ? 'Reactivate this client?' : 'Deactivate this client? They will no longer appear in the active list.'
+    if (!confirm(msg)) return
+    await supabase.from('clients').update({ is_active: newState }).eq('id', params.id)
+    setClient((c: any) => ({ ...c, is_active: newState }))
+  }
 
   if (loading) return <div className="text-sm text-[var(--text-muted)]">Loading...</div>
   if (!client) return null
@@ -194,7 +219,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-full bg-[var(--accent)] text-white font-bold text-xl flex items-center justify-center flex-shrink-0">
+        <div className={`w-14 h-14 rounded-full text-white font-bold text-xl flex items-center justify-center flex-shrink-0 ${client.is_active ? 'bg-[var(--accent)]' : 'bg-gray-300'}`}>
           {initials}
         </div>
         <div className="flex-1">
@@ -211,7 +236,20 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
             )}
           </div>
         </div>
-        <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">Active</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setEditForm({ package_label: client.package_label ?? '', checkin_day: client.checkin_day?.toString() ?? '' }); setShowEdit(true) }}
+            className="text-sm border border-[var(--border)] px-3 py-1.5 rounded-md font-medium hover:border-[var(--accent)] transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={handleToggleActive}
+            className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${client.is_active ? 'text-red-500 border border-red-200 hover:bg-red-50' : 'text-green-600 border border-green-200 hover:bg-green-50'}`}
+          >
+            {client.is_active ? 'Deactivate' : 'Reactivate'}
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -279,6 +317,52 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           })}
         </div>
       </div>
+
+      {/* Edit Client Modal */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowEdit(false)} />
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 shadow-xl">
+            <h2 className="text-base font-bold mb-4">Edit {name}</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1">Package</label>
+                <input
+                  type="text"
+                  value={editForm.package_label}
+                  onChange={e => setEditForm(f => ({ ...f, package_label: e.target.value }))}
+                  placeholder="WVF Membership"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1">Check-in day</label>
+                <select
+                  value={editForm.checkin_day}
+                  onChange={e => setEditForm(f => ({ ...f, checkin_day: e.target.value }))}
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] bg-white"
+                >
+                  <option value="">Not set</option>
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                    <option key={i} value={i}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowEdit(false)} className="flex-1 border border-[var(--border)] rounded-lg py-2.5 text-sm font-medium">Cancel</button>
+              <button
+                onClick={handleEdit}
+                disabled={savingEdit}
+                className="flex-1 bg-[var(--accent)] text-white rounded-lg py-2.5 text-sm font-semibold disabled:opacity-40"
+              >
+                {savingEdit ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
