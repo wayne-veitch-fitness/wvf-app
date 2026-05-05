@@ -25,9 +25,9 @@ export default async function ProgramsPage() {
           <h1 className="text-xl font-semibold">Programs</h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">{programs?.length ?? 0} programs</p>
         </div>
-        <button className="bg-[var(--accent)] text-white text-sm px-4 py-2 rounded-md font-medium">
+        <Link href="/coach/programs/new" className="bg-[var(--accent)] text-white text-sm px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity">
           + New program
-        </button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
