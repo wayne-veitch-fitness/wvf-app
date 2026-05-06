@@ -51,6 +51,13 @@ export default async function ClientDashboardPage() {
         <h1 className="text-2xl font-bold mb-1">Hey {name} 👋</h1>
         <p className="text-sm text-[var(--text-muted)] mb-6">Here's your overview for this week.</p>
 
+        {!client && (
+          <div className="bg-[var(--accent)] text-white rounded-xl px-5 py-5 mb-5">
+            <div className="font-semibold mb-1">You're all set up!</div>
+            <div className="text-sm opacity-80">Wayne is getting your profile ready. Your program and check-ins will appear here once everything is configured.</div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 mb-5">
           <div className="bg-white border border-[var(--border)] rounded-xl px-4 py-4">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-1">Program</div>
