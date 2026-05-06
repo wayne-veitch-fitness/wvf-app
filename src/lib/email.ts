@@ -1,4 +1,4 @@
-export const FROM    = process.env.RESEND_FROM || 'WVF App <noreply@mail.wvfitness.com.au>'
+export const FROM    = 'WVF App <noreply@mail.wvfitness.com.au>'
 export const APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://wvf-app.vercel.app')
