@@ -12,6 +12,10 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'Wayne Veitch Fitness',
   description: 'Wayne Veitch Fitness — training app',
+  icons: {
+    icon: '/logos/icon-navy.png',
+    apple: '/logos/icon-navy.png',
+  },
 }
 
 export default function RootLayout({
