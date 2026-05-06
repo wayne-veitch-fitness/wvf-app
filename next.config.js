@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    RESEND_FROM: 'WVF App <noreply@mail.wvfitness.com.au>',
+  },
   images: {
     remotePatterns: [
       {

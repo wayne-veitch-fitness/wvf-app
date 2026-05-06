@@ -11,7 +11,7 @@ export async function sendEmail({
     console.warn('RESEND_API_KEY not set — skipping email')
     return
   }
-  const from = 'WVF App <noreply@mail.wvfitness.com.au>'
+  const from = process.env.RESEND_FROM || 'WVF App <noreply@mail.wvfitness.com.au>'
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
