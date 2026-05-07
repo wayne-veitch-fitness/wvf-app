@@ -128,7 +128,8 @@ export default function ClientsPage() {
         </div>
       ) : (
         <>
-          <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden mb-4 overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white border border-[var(--border)] rounded-xl overflow-hidden mb-4 overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[10px] uppercase tracking-widest text-[var(--text-subtle)]">
@@ -149,15 +150,85 @@ export default function ClientsPage() {
             </table>
           </div>
 
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2 mb-4">
+            {activeClients.length === 0 && (
+              <div className="text-center py-8 text-sm text-[var(--text-muted)]">No active clients yet</div>
+            )}
+            {activeClients.map(c => {
+              const name = c.profiles?.full_name ?? 'Unknown'
+              const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+              const sorted = (c.checkins ?? []).sort((a: any, b: any) =>
+                new Date(b.week_starting).getTime() - new Date(a.week_starting).getTime()
+              )
+              const last = sorted[0]
+              const lastDate = last
+                ? new Date(last.week_starting).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+                : null
+              const rating = last?.overall_rating ?? null
+              return (
+                <Link key={c.id} href={`/coach/clients/${c.id}`}>
+                  <div className="bg-white border border-[var(--border)] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-[var(--accent)] transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{name}</div>
+                      <div className="text-xs text-[var(--text-muted)] truncate">
+                        {c.package_label ?? ''}
+                        {c.checkin_day != null ? ` · ${DAYS[c.checkin_day]}s` : ''}
+                        {lastDate ? ` · Last: ${lastDate}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {rating != null && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          rating >= 8 ? 'bg-green-100 text-green-700'
+                          : rating >= 5 ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-600'
+                        }`}>{rating}/10</span>
+                      )}
+                      <svg className="w-4 h-4 text-[var(--text-subtle)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+
           {inactiveClients.length > 0 && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">Inactive</p>
-              <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden opacity-60">
+              <div className="hidden md:block bg-white border border-[var(--border)] rounded-xl overflow-hidden opacity-60">
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-[var(--border)]">
                     {inactiveClients.map(c => <ClientRow key={c.id} c={c} />)}
                   </tbody>
                 </table>
+              </div>
+              <div className="md:hidden space-y-2 opacity-60">
+                {inactiveClients.map(c => {
+                  const name = c.profiles?.full_name ?? 'Unknown'
+                  const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                  return (
+                    <Link key={c.id} href={`/coach/clients/${c.id}`}>
+                      <div className="bg-white border border-[var(--border)] rounded-xl px-4 py-3 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-300 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">{name}</div>
+                          <div className="text-xs text-[var(--text-muted)]">{c.package_label ?? 'No package'}</div>
+                        </div>
+                        <svg className="w-4 h-4 text-[var(--text-subtle)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           )}

@@ -263,7 +263,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Check-ins',    value: totalCheckins },
           { label: 'Current weight', value: latestWeight ? `${latestWeight} kg` : '—' },
@@ -279,7 +279,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-5 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
         <WeightChart checkins={checkins} />
         <RatingsOverview checkins={checkins} />
       </div>

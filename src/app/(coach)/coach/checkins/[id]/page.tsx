@@ -124,7 +124,7 @@ export default function CheckinDetailPage({ params }: { params: { id: string } }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: ratings + comments */}
         <div className="space-y-4">
           {/* Summary pill */}

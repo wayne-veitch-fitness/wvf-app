@@ -56,7 +56,7 @@ export default async function CoachDashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">
             Check-ins waiting for you
