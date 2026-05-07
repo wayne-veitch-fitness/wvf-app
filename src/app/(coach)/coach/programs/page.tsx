@@ -39,21 +39,21 @@ export default async function ProgramsPage() {
           return (
             <Link key={p.id} href={`/coach/programs/${p.id}`}>
               <div className="bg-white border border-[var(--border)] rounded-xl px-5 py-4 hover:border-[var(--accent)] transition-colors cursor-pointer">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm">{p.name}</div>
+                    <div className="font-semibold text-sm leading-snug">{p.name}</div>
                     {firstLine && (
                       <div className="text-xs text-[var(--text-muted)] mt-0.5 truncate">{firstLine}</div>
                     )}
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--text-muted)]">
+                      <span>{dayCount} day{dayCount !== 1 ? 's' : ''}</span>
+                      <span className="font-medium text-[var(--text)]">{clientCount} client{clientCount !== 1 ? 's' : ''}</span>
+                      <span className="hidden sm:inline">Updated {updated}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] flex-shrink-0">
-                    <span>{dayCount} day{dayCount !== 1 ? 's' : ''}</span>
-                    <span className="font-medium text-[var(--text)]">{clientCount} client{clientCount !== 1 ? 's' : ''}</span>
-                    <span>Updated {updated}</span>
-                    <svg className="w-4 h-4 text-[var(--text-subtle)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+                  <svg className="w-4 h-4 text-[var(--text-subtle)] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             </Link>
