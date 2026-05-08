@@ -1,16 +1,34 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function ResetPasswordPage() {
   const supabase = createClient()
   const router = useRouter()
+  const [ready, setReady] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    // Exchange the code in the URL for a session
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) setError('This reset link is invalid or has expired. Please request a new one.')
+        else setReady(true)
+      })
+    } else {
+      // No code — check if already has a recovery session
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) setReady(true)
+        else setError('This reset link is invalid or has expired. Please request a new one.')
+      })
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,12 +62,21 @@ export default function ResetPasswordPage() {
               <p className="text-sm font-semibold">Password updated!</p>
               <p className="text-xs text-[var(--text-muted)] mt-1">Taking you to your dashboard…</p>
             </div>
+          ) : error && !ready ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-red-600 mb-4">{error}</p>
+              <button onClick={() => router.push('/login')} className="text-sm text-[var(--accent)] hover:underline">
+                Back to sign in
+              </button>
+            </div>
+          ) : !ready ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
-                  New password
-                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">New password</label>
                 <input
                   type="password"
                   value={password}
@@ -58,12 +85,11 @@ export default function ResetPasswordPage() {
                   minLength={8}
                   placeholder="At least 8 characters"
                   className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                  autoFocus
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
-                  Confirm new password
-                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">Confirm new password</label>
                 <input
                   type="password"
                   value={confirm}
