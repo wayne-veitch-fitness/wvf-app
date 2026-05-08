@@ -14,20 +14,11 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
-    // Exchange the code in the URL for a session
-    const code = new URLSearchParams(window.location.search).get('code')
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) setError('This reset link is invalid or has expired. Please request a new one.')
-        else setReady(true)
-      })
-    } else {
-      // No code — check if already has a recovery session
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) setReady(true)
-        else setError('This reset link is invalid or has expired. Please request a new one.')
-      })
-    }
+    // The /auth/callback route already exchanged the code — just check for a session
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setReady(true)
+      else setError('This reset link is invalid or has expired. Please request a new one.')
+    })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
