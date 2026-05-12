@@ -22,6 +22,15 @@ const navItems = [
     ),
   },
   {
+    label: 'Progress',
+    href: '/dashboard/progress',
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    ),
+  },
+  {
     label: 'Food',
     href: '/dashboard/food',
     icon: (active: boolean) => (
@@ -64,7 +73,7 @@ export default function ClientNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border)] grid grid-cols-6 py-1 pb-4 shadow-[0_-1px_8px_rgba(0,0,0,0.06)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border)] grid grid-cols-7 py-1 pb-4 shadow-[0_-1px_8px_rgba(0,0,0,0.06)]">
       {navItems.map(({ label, href, icon }) => {
         const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
         return (
