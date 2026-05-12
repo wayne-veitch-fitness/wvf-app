@@ -24,7 +24,7 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
   const [exerciseSearch, setExerciseSearch] = useState('')
   const [allExercises, setAllExercises] = useState<any[]>([])
   const [selectedExercise, setSelectedExercise] = useState<any | null>(null)
-  const [exForm, setExForm] = useState({ sets: '3', reps_min: '', reps_max: '', notes: '', label: '', superset_group: '', rir_min: '', rir_max: '', rest_seconds: '' })
+  const [exForm, setExForm] = useState({ sets: '3', reps_min: '', reps_max: '', notes: '', label: '', superset_group: '', rir_min: '', rir_max: '', rest_seconds: '', log_type: 'weighted' })
   const [savingEx, setSavingEx] = useState(false)
 
   // Assign program state
@@ -50,7 +50,7 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
           id, name, sort_order,
           program_exercises (
             id, label, superset_group, sets, reps_min, reps_max,
-            duration_seconds, rir_min, rir_max, rest_seconds, notes, sort_order,
+            duration_seconds, rir_min, rir_max, rest_seconds, notes, sort_order, log_type,
             exercises ( id, name, video_url )
           )
         )
@@ -117,7 +117,7 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
     }
     setSelectedExercise(null)
     setExerciseSearch('')
-    setExForm({ sets: '3', reps_min: '', reps_max: '', notes: '', label: '', superset_group: '', rir_min: '', rir_max: '', rest_seconds: '' })
+    setExForm({ sets: '3', reps_min: '', reps_max: '', notes: '', label: '', superset_group: '', rir_min: '', rir_max: '', rest_seconds: '', log_type: 'weighted' })
     setAddModal({ sectionId, sectionName })
   }
 
@@ -138,6 +138,7 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
       rir_min: exForm.rir_min ? parseInt(exForm.rir_min) : null,
       rir_max: exForm.rir_max ? parseInt(exForm.rir_max) : null,
       rest_seconds: exForm.rest_seconds ? parseInt(exForm.rest_seconds) : null,
+      log_type: exForm.log_type,
       sort_order: nextOrder,
     })
     await loadProgram()
@@ -303,7 +304,18 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium">{ex.exercises?.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium">{ex.exercises?.name}</span>
+                                {ex.log_type && ex.log_type !== 'weighted' && (
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                                    ex.log_type === 'check'      ? 'bg-purple-100 text-purple-700' :
+                                    ex.log_type === 'bodyweight' ? 'bg-blue-100 text-blue-700' :
+                                    ex.log_type === 'timed'      ? 'bg-amber-100 text-amber-700' : ''
+                                  }`}>
+                                    {ex.log_type === 'check' ? 'Mark done' : ex.log_type === 'bodyweight' ? 'Bodyweight' : 'Timed'}
+                                  </span>
+                                )}
+                              </div>
                               {ex.notes && <div className="text-xs text-[var(--text-muted)] mt-0.5">{ex.notes}</div>}
                             </div>
                             <div className="flex items-center gap-3">
@@ -424,6 +436,35 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
                   </div>
                   <span className="text-sm font-semibold">{selectedExercise.name}</span>
                   <button onClick={() => setSelectedExercise(null)} className="ml-auto text-xs text-[var(--text-muted)]">Change</button>
+                </div>
+
+                {/* Log type selector */}
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
+                    Logging type
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {([
+                      { value: 'weighted',   label: 'Weighted',   sub: 'kg + reps' },
+                      { value: 'bodyweight', label: 'Bodyweight', sub: 'reps only' },
+                      { value: 'timed',      label: 'Timed',      sub: 'seconds' },
+                      { value: 'check',      label: 'Mark done',  sub: 'no log' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setExForm(prev => ({ ...prev, log_type: opt.value }))}
+                        className={`flex flex-col items-center px-2 py-2 rounded-lg border text-center transition-colors ${
+                          exForm.log_type === opt.value
+                            ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
+                            : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--accent)]'
+                        }`}
+                      >
+                        <span className="text-xs font-semibold leading-tight">{opt.label}</span>
+                        <span className={`text-[10px] mt-0.5 leading-tight ${exForm.log_type === opt.value ? 'text-white/70' : 'text-[var(--text-subtle)]'}`}>{opt.sub}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">

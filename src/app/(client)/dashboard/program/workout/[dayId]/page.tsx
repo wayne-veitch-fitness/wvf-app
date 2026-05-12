@@ -95,7 +95,7 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
             id, name, sort_order,
             program_exercises (
               id, label, superset_group, sets, reps_min, reps_max,
-              duration_seconds, rir_min, rir_max, rest_seconds, notes, sort_order,
+              duration_seconds, rir_min, rir_max, rest_seconds, notes, sort_order, log_type,
               exercises ( id, name, video_url )
             )
           )
@@ -225,16 +225,18 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
   }
 
   // ── Log a single set ─────────────────────────────────────────────────────────
-  async function logSet(programExerciseId: string, setIdx: number) {
+  async function logSet(programExerciseId: string, setIdx: number, logType: string) {
     const set = sets[programExerciseId]?.[setIdx]
     if (!set) return
 
     const logId = await ensureWorkoutLog()
     if (!logId) return
 
-    const weightKg       = set.weightKg       ? parseFloat(set.weightKg)       : null
-    const reps           = set.reps           ? parseInt(set.reps)             : null
-    const durationSeconds = set.durationSeconds ? parseInt(set.durationSeconds) : null
+    const weightKg        = (logType === 'weighted')   ? (set.weightKg       ? parseFloat(set.weightKg)       : null) : null
+    const reps            = (logType === 'check')       ? 1
+                          : (logType !== 'timed')       ? (set.reps           ? parseInt(set.reps)             : null)
+                          : null
+    const durationSeconds = (logType === 'timed')       ? (set.durationSeconds ? parseInt(set.durationSeconds) : null) : null
 
     const { data: saved } = await supabase
       .from('set_logs')
@@ -393,7 +395,7 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                     const pb         = exerciseId ? pbs[exerciseId] : null
                     const prevLabel  = lastTimeLabel(ex.id)
                     const exSets     = sets[ex.id] ?? []
-                    const isTimed    = !!ex.duration_seconds
+                    const logType    = (ex.log_type ?? (ex.duration_seconds ? 'timed' : 'weighted')) as 'weighted' | 'bodyweight' | 'timed' | 'check'
                     const target     = repsTarget(ex)
                     const videoId    = getYouTubeId(ex.exercises?.video_url)
                     const videoOpen  = expandedVideo === ex.id
@@ -477,21 +479,24 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                           )}
                         </div>
 
-                        {/* Set column headers */}
-                        <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 border-b border-[var(--border)]">
-                          <div className="w-7 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">
-                            Set
-                          </div>
-                          <div className={`text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center ${isTimed ? 'flex-1' : 'flex-1'}`}>
-                            {isTimed ? 'Time (s)' : 'kg'}
-                          </div>
-                          {!isTimed && (
-                            <div className="w-16 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">
-                              Reps
+                        {/* Set column headers — hidden for 'check' type */}
+                        {logType !== 'check' && (
+                          <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 border-b border-[var(--border)]">
+                            <div className="w-7 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">
+                              Set
                             </div>
-                          )}
-                          <div className="w-9" />
-                        </div>
+                            {logType === 'weighted' && (
+                              <div className="flex-1 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">kg</div>
+                            )}
+                            {logType === 'timed' && (
+                              <div className="flex-1 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">Time (s)</div>
+                            )}
+                            {(logType === 'weighted' || logType === 'bodyweight') && (
+                              <div className="w-16 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">Reps</div>
+                            )}
+                            <div className="w-9" />
+                          </div>
+                        )}
 
                         {/* Set rows */}
                         {exSets.map((set, setIdx) => {
@@ -503,60 +508,80 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                                 isPb ? 'bg-amber-50' : set.logged ? 'bg-green-50/50' : ''
                               }`}
                             >
-                              <div className="w-7 text-center text-sm font-semibold text-[var(--text-muted)]">
-                                {set.setNumber}
-                              </div>
-
-                              {isTimed ? (
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  value={set.durationSeconds}
-                                  onChange={e => updateSet(ex.id, setIdx, 'durationSeconds', e.target.value)}
-                                  placeholder={ex.duration_seconds?.toString() ?? '30'}
-                                  className="flex-1 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
-                                />
-                              ) : (
-                                <>
-                                  <input
-                                    type="number"
-                                    inputMode="decimal"
-                                    value={set.weightKg}
-                                    onChange={e => updateSet(ex.id, setIdx, 'weightKg', e.target.value)}
-                                    placeholder="—"
-                                    className="flex-1 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
-                                  />
-                                  <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    value={set.reps}
-                                    onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)}
-                                    placeholder={ex.reps_min?.toString() ?? '—'}
-                                    className="w-16 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
-                                  />
-                                </>
-                              )}
-
-                              {/* Log / confirm button */}
-                              <button
-                                onClick={() => logSet(ex.id, setIdx)}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
-                                  isPb
-                                    ? 'bg-amber-400 text-white'
-                                    : set.logged
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                }`}
-                                title={isPb ? 'New PB!' : set.logged ? 'Logged' : 'Log set'}
-                              >
-                                {isPb ? (
-                                  <span className="text-sm leading-none">🏆</span>
-                                ) : (
+                              {logType === 'check' ? (
+                                // Mark done — full-width button, no number inputs
+                                <button
+                                  onClick={() => logSet(ex.id, setIdx, logType)}
+                                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                                    set.logged
+                                      ? 'bg-green-500 text-white'
+                                      : 'bg-gray-100 text-[var(--text-muted)] hover:bg-gray-200'
+                                  }`}
+                                >
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                   </svg>
-                                )}
-                              </button>
+                                  {set.logged ? `Set ${set.setNumber} done` : `Mark set ${set.setNumber} done`}
+                                </button>
+                              ) : (
+                                <>
+                                  <div className="w-7 text-center text-sm font-semibold text-[var(--text-muted)]">
+                                    {set.setNumber}
+                                  </div>
+
+                                  {logType === 'weighted' && (
+                                    <input
+                                      type="number"
+                                      inputMode="decimal"
+                                      value={set.weightKg}
+                                      onChange={e => updateSet(ex.id, setIdx, 'weightKg', e.target.value)}
+                                      placeholder="—"
+                                      className="flex-1 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                    />
+                                  )}
+                                  {logType === 'timed' && (
+                                    <input
+                                      type="number"
+                                      inputMode="numeric"
+                                      value={set.durationSeconds}
+                                      onChange={e => updateSet(ex.id, setIdx, 'durationSeconds', e.target.value)}
+                                      placeholder={ex.duration_seconds?.toString() ?? '30'}
+                                      className="flex-1 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                    />
+                                  )}
+                                  {(logType === 'weighted' || logType === 'bodyweight') && (
+                                    <input
+                                      type="number"
+                                      inputMode="numeric"
+                                      value={set.reps}
+                                      onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)}
+                                      placeholder={ex.reps_min?.toString() ?? '—'}
+                                      className="w-16 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                    />
+                                  )}
+
+                                  {/* Log / confirm button */}
+                                  <button
+                                    onClick={() => logSet(ex.id, setIdx, logType)}
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
+                                      isPb
+                                        ? 'bg-amber-400 text-white'
+                                        : set.logged
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                    }`}
+                                    title={isPb ? 'New PB!' : set.logged ? 'Logged' : 'Log set'}
+                                  >
+                                    {isPb ? (
+                                      <span className="text-sm leading-none">🏆</span>
+                                    ) : (
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )
                         })}
