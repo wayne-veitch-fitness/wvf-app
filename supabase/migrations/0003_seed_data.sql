@@ -3,9 +3,8 @@
 -- Migration: 0003_seed_data.sql
 -- Run AFTER 0002_schema_updates.sql
 -- Creates 3 demo clients, exercises, 2 programs, and check-in history
--- Demo login: trent.demo@wvf.app / Demo1234!
---             isla.demo@wvf.app  / Demo1234!
---             melanie.demo@wvf.app / Demo1234!
+-- NOTE: This file is for local development only. Do NOT apply to production.
+-- Demo account passwords are stored separately in local dev notes — never in source control.
 -- =============================================================================
 
 DO $$

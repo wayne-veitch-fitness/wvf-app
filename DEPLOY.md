@@ -4,27 +4,34 @@
 
 ### 1. Get your Supabase API keys
 
-1. Go to https://supabase.com/dashboard/project/aokchdumugrjqwbpdqnj/settings/api
-2. Copy **Project URL** and **anon public** key
-3. Create `wvf-app/.env.local` (copy from `.env.local.example`) and paste them in
+1. Go to your Supabase project → **Settings → API**
+2. Copy **Project URL** and **Publishable (anon) key**
+3. Create `wvf-app/.env.local` (copy from `.env.local.example`) and fill in all values
 
-### 2. Run the database schema
+### 2. Run the database migrations
 
-1. Open the Supabase SQL editor: https://supabase.com/dashboard/project/aokchdumugrjqwbpdqnj/sql
-2. Paste and run the contents of `supabase/migrations/0001_initial_schema.sql`
-3. Verify the tables and tag seed data appeared in Table Editor
+Open the Supabase SQL editor (**SQL Editor → New query**) and run each file in order:
+
+1. `supabase/migrations/0001_initial_schema.sql`
+2. `supabase/migrations/0002_schema_updates.sql`
+3. `supabase/migrations/0004_subfolder_support.sql`
+4. `supabase/migrations/0005_security_fixes.sql`
+5. `supabase/storage_rls.sql`
+
+> Do **not** run `0003_seed_data.sql` on production — it is for local development only.
 
 ### 3. Create Wayne's coach account
 
-1. In Supabase → Authentication → Users → Invite user
+1. In Supabase → **Authentication → Users → Invite user**
 2. Enter Wayne's email; he'll receive a set-password link
-3. After he sets his password, update his profile row to set `role = 'coach'`:
+3. After he sets his password, run this in the SQL editor to give him the coach role:
    ```sql
    update profiles set role = 'coach' where id = '<wayne-user-id>';
    ```
+   (Find the user ID in Authentication → Users)
 4. Log in at the app URL with Wayne's credentials to confirm the `/coach` redirect works
 
-### 4. Create test client account
+### 4. Create a test client account
 
 1. Invite a test client email the same way
 2. Log in with that account — should land on `/dashboard`
@@ -32,30 +39,34 @@
 
 ### 5. Create Supabase storage buckets
 
-In Supabase → Storage → New bucket, create three **private** buckets:
-- `exercise-videos` (for Wayne's demo clips)
-- `checkin-photos` (for client progress photos)
-- `resources` (for PDFs)
+In Supabase → **Storage → New bucket**, create two **private** buckets:
+- `checkin-photos` — for client progress photos (max 10MB per file)
+- `resources` — for PDFs and documents (max 50MB per file)
+
+Both must have **Public bucket** toggled **off**.
+
+> Exercise videos are linked via YouTube URL — no storage bucket is needed.
 
 ### 6. Connect GitHub repo to Vercel
 
-1. Go to https://vercel.com/wayne-veitch-fitness-projects
-2. Click **Add New → Project**
-3. Import from GitHub: `wayne-veitch-fitness/wvf-app`
-4. Framework preset: **Next.js** (auto-detected)
-5. Add environment variables (from your `.env.local`):
+1. Go to [vercel.com](https://vercel.com) and open your project
+2. Under **Settings → Environment Variables**, add:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-6. Deploy
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `RESEND_API_KEY`
+   - `COACH_EMAIL`
+   - `NEXT_PUBLIC_APP_URL`
+3. Deploy
 
-Every push to `main` will auto-deploy. That's it.
+Every push to `main` will auto-deploy.
 
-### 7. Point the subdomain (Phase 5)
+### 7. Point the subdomain
 
 When ready to go live at `app.wvfitness.com.au`:
-1. In Vercel project → Settings → Domains → Add `app.wvfitness.com.au`
+1. In Vercel project → **Settings → Domains** → Add `app.wvfitness.com.au`
 2. Vercel will give you a CNAME record to add
-3. In Squarespace → Domains → DNS Settings → add that CNAME record
+3. In Squarespace → **Domains → DNS Settings** → add that CNAME record
 4. Takes ~10 minutes to propagate
 
 ---
@@ -65,7 +76,7 @@ When ready to go live at `app.wvfitness.com.au`:
 ```bash
 cd wvf-app
 cp .env.local.example .env.local
-# fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+# fill in values from your Supabase project settings
 npm install
 npm run dev
 ```
@@ -75,5 +86,5 @@ App runs at http://localhost:3000
 ## Regenerating TypeScript types after a schema change
 
 ```bash
-npx supabase gen types typescript --project-id aokchdumugrjqwbpdqnj > src/lib/supabase/types.ts
+npx supabase gen types typescript --project-id <your-project-ref> > src/lib/supabase/types.ts
 ```

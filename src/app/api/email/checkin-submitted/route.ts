@@ -19,6 +19,16 @@ export async function POST(req: NextRequest) {
       .eq('id', checkinId)
       .single()
 
+    // Verify the caller is either the coach or the client who owns this check-in
+    if (checkin) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+      const isCoach = profile?.role === 'coach'
+      const isOwner = checkin.clients?.profile_id === user.id
+      if (!isCoach && !isOwner) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
+
     if (!checkin) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const coachEmail = process.env.COACH_EMAIL

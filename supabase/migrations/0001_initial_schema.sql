@@ -543,9 +543,10 @@ create policy "Coach can manage resources"
 --
 -- Create these buckets manually (Storage > New bucket):
 --
---   exercise-videos   (private, max 200MB per file — short demo clips)
 --   checkin-photos    (private, max 10MB per file)
 --   resources         (private, max 50MB per file — PDFs)
+--
+-- Note: exercise videos are linked via YouTube URL — no storage bucket needed.
 --
 -- Access control: all buckets are private; serve via signed URLs in the app.
 --

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+
+const createClientSchema = z.object({
+  full_name:     z.string().min(2, 'Name must be at least 2 characters').max(100),
+  email:         z.string().email('Invalid email address'),
+  password:      z.string().min(8, 'Password must be at least 8 characters').max(72),
+  package_label: z.string().max(100).optional(),
+  checkin_day:   z.number().int().min(0).max(6).optional().nullable(),
+})
 
 export async function POST(req: NextRequest) {
   // Verify caller is coach
@@ -10,10 +19,13 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'coach') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { full_name, email, password, package_label, checkin_day } = await req.json()
-  if (!full_name || !email || !password) {
-    return NextResponse.json({ error: 'Name, email and password are required' }, { status: 400 })
+  const body = await req.json()
+  const parsed = createClientSchema.safeParse(body)
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? 'Invalid input'
+    return NextResponse.json({ error: message }, { status: 400 })
   }
+  const { full_name, email, password, package_label, checkin_day } = parsed.data
 
   const admin = createAdminClient()
 

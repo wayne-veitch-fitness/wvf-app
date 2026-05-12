@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { APP_URL, emailWrapper } from '@/lib/email'
+import { APP_URL, emailWrapper, sendEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Only the coach can trigger reply notifications
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'coach') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { checkinId } = await req.json()
     if (!checkinId) return NextResponse.json({ error: 'Missing checkinId' }, { status: 400 })
@@ -30,7 +34,7 @@ export async function POST(req: NextRequest) {
     const clientEmail = authUser?.user?.email
 
     if (!clientEmail) {
-      console.warn(`No email found for profile ${profileId}`)
+      console.warn('No email address found for client — skipping reply notification')
       return NextResponse.json({ ok: true, skipped: true })
     }
 
@@ -50,24 +54,11 @@ export async function POST(req: NextRequest) {
       </a>
     `)
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'WVF App <noreply@mail.wvfitness.com.au>',
-        to: clientEmail,
-        subject: 'Wayne has replied to your check-in',
-        html,
-      }),
+    await sendEmail({
+      to: clientEmail,
+      subject: 'Wayne has replied to your check-in',
+      html,
     })
-
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('Resend error (coach-replied):', err)
-    }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
