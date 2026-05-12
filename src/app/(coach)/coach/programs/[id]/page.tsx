@@ -148,7 +148,16 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
 
   async function removeExercise(peId: string) {
     if (!confirm('Remove this exercise?')) return
-    await supabase.from('program_exercises').delete().eq('id', peId)
+    const { error } = await supabase.from('program_exercises').delete().eq('id', peId)
+    if (error) {
+      alert(`Could not remove exercise: ${error.message}`)
+      return
+    }
+    await loadProgram()
+  }
+
+  async function updateLogType(peId: string, logType: string) {
+    await supabase.from('program_exercises').update({ log_type: logType }).eq('id', peId)
     await loadProgram()
   }
 
@@ -288,12 +297,13 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
                         return (
                           <div
                             key={ex.id}
-                            className={`flex items-start gap-4 px-4 py-3 ${
+                            className={`${
                               ei < group.items.length - 1 || gi < groupSuperset(section.program_exercises).length - 1
                                 ? 'border-b border-[var(--border)]'
                                 : ''
                             } ${group.group && group.items.length > 1 ? 'bg-blue-50/30' : ''}`}
                           >
+                          <div className="flex items-start gap-4 px-4 py-3">
                             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
                               {videoId ? (
                                 <img src={`https://img.youtube.com/vi/${videoId}/default.jpg`} alt="" className="w-full h-full object-cover" />
@@ -358,6 +368,30 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
                                 </button>
                               )}
                             </div>
+                          </div>
+                          {/* Inline log type editor — only in edit mode */}
+                          {editMode && (
+                            <div className="flex items-center gap-1.5 px-4 pb-2.5">
+                              {([
+                                { value: 'weighted',   label: 'Weighted' },
+                                { value: 'bodyweight', label: 'Bodyweight' },
+                                { value: 'timed',      label: 'Timed' },
+                                { value: 'check',      label: 'Mark done' },
+                              ] as const).map(opt => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => updateLogType(ex.id, opt.value)}
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                                    (ex.log_type ?? 'weighted') === opt.value
+                                      ? 'bg-[var(--accent)] text-white'
+                                      : 'bg-gray-100 text-[var(--text-muted)] hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           </div>
                         )
                       })}
