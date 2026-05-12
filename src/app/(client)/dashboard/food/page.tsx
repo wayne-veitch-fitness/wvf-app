@@ -50,6 +50,8 @@ export default function FoodPage() {
   const [entry, setEntry] = useState<DiaryEntry>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingRef = useRef<Partial<DiaryEntry>>({})
@@ -98,9 +100,29 @@ export default function FoodPage() {
     setLoading(false)
   }
 
+  function flashSaved() {
+    setSaving(false)
+    setSaved(true)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2500)
+  }
+
+  async function persistEntry(cid: string, d: string, fields: Partial<DiaryEntry>) {
+    const payload: Record<string, unknown> = { client_id: cid, diary_date: d, updated_at: new Date().toISOString() }
+    for (const [k, v] of Object.entries(fields)) {
+      if (k === 'water_litres') {
+        payload[k] = v === '' ? null : parseFloat(v as string)
+      } else {
+        payload[k] = (v as string) || null
+      }
+    }
+    await supabase.from('food_diary').upsert(payload, { onConflict: 'client_id,diary_date' })
+  }
+
   const scheduleAutosave = useCallback((field: string, value: string) => {
     pendingRef.current = { ...pendingRef.current, [field]: value }
     setSaving(true)
+    setSaved(false)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       const cid = clientIdRef.current
@@ -108,18 +130,23 @@ export default function FoodPage() {
       if (!cid) return
       const pending = { ...pendingRef.current }
       pendingRef.current = {}
-      const payload: Record<string, unknown> = { client_id: cid, diary_date: d, updated_at: new Date().toISOString() }
-      for (const [k, v] of Object.entries(pending)) {
-        if (k === 'water_litres') {
-          payload[k] = v === '' ? null : parseFloat(v as string)
-        } else {
-          payload[k] = v || null
-        }
-      }
-      await supabase.from('food_diary').upsert(payload, { onConflict: 'client_id,diary_date' })
-      setSaving(false)
+      await persistEntry(cid, d, pending)
+      flashSaved()
     }, 1500)
   }, [])
+
+  async function saveNow() {
+    const cid = clientIdRef.current
+    const d = dateRef.current
+    if (!cid) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    const pending = { ...pendingRef.current }
+    pendingRef.current = {}
+    setSaving(true)
+    setSaved(false)
+    await persistEntry(cid, d, Object.keys(pending).length > 0 ? pending : entry)
+    flashSaved()
+  }
 
   function handleChange(field: string, value: string) {
     setEntry(prev => ({ ...prev, [field]: value }))
@@ -164,12 +191,20 @@ export default function FoodPage() {
           </div>
         </div>
 
-        {/* Autosave indicator */}
+        {/* Save status indicator */}
         <div className="h-5 mb-3 flex items-center">
-          {saving && (
+          {saving && !saved && (
             <span className="text-[11px] text-[var(--text-subtle)] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block animate-pulse" />
               Saving...
+            </span>
+          )}
+          {saved && (
+            <span className="text-[11px] text-green-600 flex items-center gap-1.5">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Saved
             </span>
           )}
         </div>
@@ -210,6 +245,14 @@ export default function FoodPage() {
                 className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)] bg-white"
               />
             </div>
+
+            <button
+              onClick={saveNow}
+              disabled={saving}
+              className="w-full bg-[var(--accent)] text-white py-3.5 rounded-xl font-semibold text-sm disabled:opacity-50 transition-opacity"
+            >
+              {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
+            </button>
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 function getYouTubeId(url: string): string | null {
   if (!url) return null
@@ -142,7 +143,18 @@ export default function ClientProgramPage() {
 
             {currentDay && (
               <div>
-                <p className="text-xs font-semibold text-[var(--text-muted)] mb-4">{currentDay.name}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs font-semibold text-[var(--text-muted)]">{currentDay.name}</p>
+                  <Link
+                    href={`/dashboard/program/workout/${currentDay.id}`}
+                    className="flex items-center gap-1.5 bg-[var(--accent)] text-white text-xs font-semibold px-3.5 py-2 rounded-lg"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+                    </svg>
+                    Start workout
+                  </Link>
+                </div>
                 <div className="space-y-4">
                   {currentDay.program_sections.map((section: any) => (
                     <div key={section.id}>
