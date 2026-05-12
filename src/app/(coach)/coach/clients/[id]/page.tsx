@@ -4,6 +4,15 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+const PACKAGES = [
+  'Semi-Private (2x/week)',
+  'Semi-Private (3x/week)',
+  '1:1 Online Coaching',
+  'WVF Membership',
+  'Premium Package',
+  'Mums & Bubs',
+]
+
 const METRICS = [
   { key: 'sleep_rating',     label: 'Sleep',      short: 'Sleep' },
   { key: 'nutrition_rating', label: 'Nutrition',   short: 'Nutrition' },
@@ -485,14 +494,15 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
             <div className="space-y-3">
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1">Package</label>
-                <input
-                  type="text"
+                <select
                   value={editForm.package_label}
                   onChange={e => setEditForm(f => ({ ...f, package_label: e.target.value }))}
-                  placeholder="WVF Membership"
-                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] bg-white"
                   autoFocus
-                />
+                >
+                  <option value="">— Select —</option>
+                  {PACKAGES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1">Check-in day</label>

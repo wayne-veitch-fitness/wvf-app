@@ -6,6 +6,15 @@ import Link from 'next/link'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+const PACKAGES = [
+  'Semi-Private (2x/week)',
+  'Semi-Private (3x/week)',
+  '1:1 Online Coaching',
+  'WVF Membership',
+  'Premium Package',
+  'Mums & Bubs',
+]
+
 export default function ClientsPage() {
   const supabase = createClient()
   const router = useRouter()
@@ -276,13 +285,14 @@ export default function ClientsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1">Package</label>
-                  <input
-                    type="text"
+                  <select
                     value={form.package_label}
                     onChange={e => setForm(f => ({ ...f, package_label: e.target.value }))}
-                    placeholder="WVF Membership"
-                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)]"
-                  />
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] bg-white"
+                  >
+                    <option value="">— Select —</option>
+                    {PACKAGES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1">Check-in day</label>
