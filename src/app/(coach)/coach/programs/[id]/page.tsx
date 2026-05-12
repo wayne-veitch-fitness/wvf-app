@@ -147,7 +147,7 @@ export default function ProgramDetailPage({ params }: { params: { id: string } }
   }
 
   async function removeExercise(peId: string) {
-    if (!confirm('Remove this exercise?')) return
+    if (!confirm('Remove this exercise? Any workout sets clients have logged for it will also be deleted.')) return
     const { error } = await supabase.from('program_exercises').delete().eq('id', peId)
     if (error) {
       alert(`Could not remove exercise: ${error.message}`)
