@@ -134,6 +134,10 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   const [savingEdit, setSavingEdit] = useState(false)
   const [editForm, setEditForm] = useState({ package_label: '', checkin_day: '' })
   const [expandedDiaryDate, setExpandedDiaryDate] = useState<string | null>(null)
+  const [workoutLogs,  setWorkoutLogs]  = useState<any[]>([])
+  const [setCountMap,  setSetCountMap]  = useState<Record<string, number>>({})
+  const [pbCountMap,   setPbCountMap]   = useState<Record<string, number>>({})
+  const [pbList,       setPbList]       = useState<{ name: string; weight: number; logId: string }[]>([])
 
   useEffect(() => {
     async function load() {
@@ -167,6 +171,44 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         .order('diary_date', { ascending: false })
         .limit(14)
       setFoodDiary(fd ?? [])
+
+      // Workout logs + personal bests
+      const { data: wlRows } = await supabase
+        .from('workout_logs')
+        .select('id, logged_at, program_days(name)')
+        .eq('client_id', params.id)
+        .order('logged_at', { ascending: false })
+
+      const allLogIds = (wlRows ?? []).map((w: any) => w.id)
+      let allSetLogs: any[] = []
+      if (allLogIds.length > 0) {
+        const { data: sl } = await supabase
+          .from('set_logs')
+          .select('workout_log_id, weight_kg, program_exercises(exercise_id, exercises(name))')
+          .in('workout_log_id', allLogIds)
+        allSetLogs = sl ?? []
+      }
+
+      const scMap: Record<string, number> = {}
+      const pbByEx: Record<string, { weight: number; name: string; logId: string }> = {}
+      for (const sl of allSetLogs) {
+        scMap[sl.workout_log_id] = (scMap[sl.workout_log_id] ?? 0) + 1
+        const exId   = sl.program_exercises?.exercise_id
+        const exName = sl.program_exercises?.exercises?.name
+        if (!exId || !sl.weight_kg) continue
+        if (!pbByEx[exId] || sl.weight_kg > pbByEx[exId].weight) {
+          pbByEx[exId] = { weight: sl.weight_kg, name: exName ?? 'Exercise', logId: sl.workout_log_id }
+        }
+      }
+      const pcMap: Record<string, number> = {}
+      for (const pb of Object.values(pbByEx)) {
+        pcMap[pb.logId] = (pcMap[pb.logId] ?? 0) + 1
+      }
+
+      setWorkoutLogs(wlRows ?? [])
+      setSetCountMap(scMap)
+      setPbCountMap(pcMap)
+      setPbList(Object.values(pbByEx).sort((a, b) => b.weight - a.weight))
 
       setLoading(false)
     }
@@ -283,6 +325,60 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         <WeightChart checkins={checkins} />
         <RatingsOverview checkins={checkins} />
       </div>
+
+      {/* Workouts */}
+      {workoutLogs.length > 0 && (
+        <div className="mb-5">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">
+            Workouts
+          </div>
+          <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden">
+            {workoutLogs.slice(0, 8).map((wl: any) => {
+              const pbCount  = pbCountMap[wl.id] ?? 0
+              const setCount = setCountMap[wl.id] ?? 0
+              const dateLabel = new Date(wl.logged_at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+              return (
+                <div key={wl.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0">
+                  <div className="text-sm text-[var(--text-muted)] w-28 flex-shrink-0">{dateLabel}</div>
+                  <div className="flex-1 text-sm truncate">{(wl.program_days as any)?.name ?? '—'}</div>
+                  <div className="text-xs text-[var(--text-subtle)] flex-shrink-0">{setCount} sets</div>
+                  {pbCount > 0 && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex-shrink-0">
+                      🏆 {pbCount} PB{pbCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Personal bests */}
+      {pbList.length > 0 && (
+        <div className="mb-5">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] mb-2">
+            Personal bests
+          </div>
+          <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden">
+            {pbList.map((pb, i) => {
+              const wl = workoutLogs.find((w: any) => w.id === pb.logId)
+              const dateLabel = wl
+                ? new Date(wl.logged_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+                : ''
+              return (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] last:border-b-0">
+                  <span className="text-sm flex-1 truncate">{pb.name}</span>
+                  <span className="text-sm font-bold text-amber-600">🏆 {pb.weight} kg</span>
+                  {dateLabel && (
+                    <span className="text-xs text-[var(--text-subtle)] flex-shrink-0">{dateLabel}</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Food Diary */}
       {foodDiary.length > 0 && (
