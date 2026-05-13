@@ -481,20 +481,17 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
 
                         {/* Set column headers — hidden for 'check' type */}
                         {logType !== 'check' && (
-                          <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 border-b border-[var(--border)]">
-                            <div className="w-7 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">
-                              Set
+                          <div className={`grid gap-2 px-4 py-1.5 bg-gray-50 border-b border-[var(--border)] ${
+                            logType === 'weighted' ? 'grid-cols-[28px_1fr_56px_36px]' : 'grid-cols-[28px_1fr_36px]'
+                          }`}>
+                            <div className="text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">Set</div>
+                            <div className="text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">
+                              {logType === 'timed' ? 'Time (s)' : logType === 'bodyweight' ? 'Reps' : 'kg'}
                             </div>
                             {logType === 'weighted' && (
-                              <div className="flex-1 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">kg</div>
+                              <div className="text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">Reps</div>
                             )}
-                            {logType === 'timed' && (
-                              <div className="flex-1 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">Time (s)</div>
-                            )}
-                            {(logType === 'weighted' || logType === 'bodyweight') && (
-                              <div className="w-16 text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wide text-center">Reps</div>
-                            )}
-                            <div className="w-9" />
+                            <div />
                           </div>
                         )}
 
@@ -504,31 +501,36 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                           return (
                             <div
                               key={setIdx}
-                              className={`flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] last:border-b-0 transition-colors ${
+                              className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
                                 isPb ? 'bg-amber-50' : set.logged ? 'bg-green-50/50' : ''
                               }`}
                             >
                               {logType === 'check' ? (
                                 // Mark done — full-width button, no number inputs
-                                <button
-                                  onClick={() => logSet(ex.id, setIdx, logType)}
-                                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                                    set.logged
-                                      ? 'bg-green-500 text-white'
-                                      : 'bg-gray-100 text-[var(--text-muted)] hover:bg-gray-200'
-                                  }`}
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  {set.logged ? `Set ${set.setNumber} done` : `Mark set ${set.setNumber} done`}
-                                </button>
+                                <div className="px-4 py-2">
+                                  <button
+                                    onClick={() => logSet(ex.id, setIdx, logType)}
+                                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                                      set.logged
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-100 text-[var(--text-muted)] hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {set.logged ? `Set ${set.setNumber} done` : `Mark set ${set.setNumber} done`}
+                                  </button>
+                                </div>
                               ) : (
-                                <>
-                                  <div className="w-7 text-center text-sm font-semibold text-[var(--text-muted)]">
+                                <div className={`grid items-center gap-2 px-4 py-2 ${
+                                  logType === 'weighted' ? 'grid-cols-[28px_1fr_56px_36px]' : 'grid-cols-[28px_1fr_36px]'
+                                }`}>
+                                  <div className="text-center text-sm font-semibold text-[var(--text-muted)]">
                                     {set.setNumber}
                                   </div>
 
+                                  {/* Main input: weight or duration or reps (bodyweight) */}
                                   {logType === 'weighted' && (
                                     <input
                                       type="number"
@@ -536,7 +538,7 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                                       value={set.weightKg}
                                       onChange={e => updateSet(ex.id, setIdx, 'weightKg', e.target.value)}
                                       placeholder="—"
-                                      className="flex-1 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                      className="min-w-0 w-full text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
                                     />
                                   )}
                                   {logType === 'timed' && (
@@ -546,24 +548,36 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                                       value={set.durationSeconds}
                                       onChange={e => updateSet(ex.id, setIdx, 'durationSeconds', e.target.value)}
                                       placeholder={ex.duration_seconds?.toString() ?? '30'}
-                                      className="flex-1 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                      className="min-w-0 w-full text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
                                     />
                                   )}
-                                  {(logType === 'weighted' || logType === 'bodyweight') && (
+                                  {logType === 'bodyweight' && (
                                     <input
                                       type="number"
                                       inputMode="numeric"
                                       value={set.reps}
                                       onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)}
                                       placeholder={ex.reps_min?.toString() ?? '—'}
-                                      className="w-16 text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                      className="min-w-0 w-full text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
+                                    />
+                                  )}
+
+                                  {/* Reps column — weighted only */}
+                                  {logType === 'weighted' && (
+                                    <input
+                                      type="number"
+                                      inputMode="numeric"
+                                      value={set.reps}
+                                      onChange={e => updateSet(ex.id, setIdx, 'reps', e.target.value)}
+                                      placeholder={ex.reps_min?.toString() ?? '—'}
+                                      className="min-w-0 w-full text-center border border-[var(--border)] rounded-lg py-1.5 text-sm focus:outline-none focus:border-[var(--accent)]"
                                     />
                                   )}
 
                                   {/* Log / confirm button */}
                                   <button
                                     onClick={() => logSet(ex.id, setIdx, logType)}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
+                                    className={`h-9 w-full rounded-full flex items-center justify-center transition-colors ${
                                       isPb
                                         ? 'bg-amber-400 text-white'
                                         : set.logged
@@ -580,7 +594,7 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
                                       </svg>
                                     )}
                                   </button>
-                                </>
+                                </div>
                               )}
                             </div>
                           )
