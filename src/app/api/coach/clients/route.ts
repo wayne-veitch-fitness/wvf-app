@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmail, welcomeEmailHtml, APP_URL } from '@/lib/email'
 
 const createClientSchema = z.object({
   full_name:     z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -60,6 +61,18 @@ export async function POST(req: NextRequest) {
   if (clientErr) {
     return NextResponse.json({ error: clientErr.message }, { status: 400 })
   }
+
+  // Send welcome email — fire and forget so it doesn't block the response
+  sendEmail({
+    to: email,
+    subject: `Welcome to Wayne Veitch Fitness 🎉`,
+    html: welcomeEmailHtml({
+      firstName: full_name.split(' ')[0],
+      email,
+      password,
+      appUrl: APP_URL,
+    }),
+  }).catch(err => console.error('Welcome email failed:', err))
 
   return NextResponse.json({ clientId: clientRow.id })
 }
