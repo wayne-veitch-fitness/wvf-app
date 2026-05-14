@@ -127,14 +127,18 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
       }
       setExIdMap(idMap)
 
-      // ── Last session ────────────────────────────────────────────────────────
-      const { data: prevLogs } = await supabase
-        .from('workout_logs')
-        .select('id, logged_at')
-        .eq('client_id', client.id)
-        .eq('program_day_id', dayId)
-        .order('logged_at', { ascending: false })
-        .limit(1)
+      // ── Last session + all workout logs for PBs — run in parallel ───────────
+      const [{ data: prevLogs }, { data: allLogs }] = await Promise.all([
+        supabase.from('workout_logs')
+          .select('id, logged_at')
+          .eq('client_id', client.id)
+          .eq('program_day_id', dayId)
+          .order('logged_at', { ascending: false })
+          .limit(1),
+        supabase.from('workout_logs')
+          .select('id')
+          .eq('client_id', client.id),
+      ])
 
       const lastSetsMap: Record<string, LastSet[]> = {}
       if (prevLogs?.[0]) {
@@ -157,10 +161,6 @@ export default function WorkoutPage({ params }: { params: Promise<{ dayId: strin
       setLastSets(lastSetsMap)
 
       // ── Personal bests ──────────────────────────────────────────────────────
-      const { data: allLogs } = await supabase
-        .from('workout_logs')
-        .select('id')
-        .eq('client_id', client.id)
 
       const logIds = allLogs?.map(w => w.id) ?? []
       const pbMap: Record<string, PbData> = {}

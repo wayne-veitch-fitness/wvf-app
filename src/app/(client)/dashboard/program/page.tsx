@@ -51,25 +51,25 @@ export default function ClientProgramPage() {
         .single()
       if (!cp) { setLoading(false); return }
 
-      const { data: prog } = await supabase
-        .from('programs').select('id, name').eq('id', cp.program_id).single()
-      setProgram(prog)
-
-      const { data: dayRows } = await supabase
-        .from('program_days')
-        .select(`
-          id, day_number, name, sort_order,
-          program_sections (
-            id, name, sort_order,
-            program_exercises (
-              id, label, superset_group, sets, reps_min, reps_max,
-              duration_seconds, rir_min, rir_max, rest_seconds, notes, sort_order,
-              exercises ( name, video_url )
+      // Program metadata and days both need only cp.program_id — run in parallel
+      const [{ data: prog }, { data: dayRows }] = await Promise.all([
+        supabase.from('programs').select('id, name').eq('id', cp.program_id).single(),
+        supabase.from('program_days')
+          .select(`
+            id, day_number, name, sort_order,
+            program_sections (
+              id, name, sort_order,
+              program_exercises (
+                id, label, superset_group, sets, reps_min, reps_max,
+                duration_seconds, rir_min, rir_max, rest_seconds, notes, sort_order,
+                exercises ( name, video_url )
+              )
             )
-          )
-        `)
-        .eq('program_id', cp.program_id)
-        .order('sort_order')
+          `)
+          .eq('program_id', cp.program_id)
+          .order('sort_order'),
+      ])
+      setProgram(prog)
 
       const sorted = (dayRows ?? []).map((d: any) => ({
         ...d,

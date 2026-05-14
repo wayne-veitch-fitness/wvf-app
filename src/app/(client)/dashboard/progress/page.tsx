@@ -130,20 +130,18 @@ export default function ProgressPage() {
         .from('clients').select('id').eq('profile_id', user.id).single()
       if (!client) { setLoading(false); return }
 
-      // Check-ins (for weight chart, streak, wellness)
-      const { data: ci } = await supabase
-        .from('checkins')
-        .select('week_starting, weight_kg, overall_rating, sleep_rating, energy_rating, nutrition_rating, recovery_rating, stress_rating, training_rating')
-        .eq('client_id', client.id)
-        .order('week_starting', { ascending: false })
+      // Check-ins and workout logs are independent — run in parallel
+      const [{ data: ci }, { data: wlRows }] = await Promise.all([
+        supabase.from('checkins')
+          .select('week_starting, weight_kg, overall_rating, sleep_rating, energy_rating, nutrition_rating, recovery_rating, stress_rating, training_rating')
+          .eq('client_id', client.id)
+          .order('week_starting', { ascending: false }),
+        supabase.from('workout_logs')
+          .select('id, logged_at')
+          .eq('client_id', client.id)
+          .order('logged_at', { ascending: false }),
+      ])
       setCheckins(ci ?? [])
-
-      // Workout logs (for stats + PBs)
-      const { data: wlRows } = await supabase
-        .from('workout_logs')
-        .select('id, logged_at')
-        .eq('client_id', client.id)
-        .order('logged_at', { ascending: false })
 
       const allLogIds = (wlRows ?? []).map((w: any) => w.id)
       setTotalWorkouts(allLogIds.length)

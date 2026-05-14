@@ -158,35 +158,22 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       if (!c) { router.push('/coach/clients'); return }
       setClient(c)
 
-      const { data: ci } = await supabase
-        .from('checkins')
-        .select('*')
-        .eq('client_id', params.id)
-        .order('week_starting', { ascending: false })
+      // All four queries depend only on params.id — run in parallel
+      const [
+        { data: ci },
+        { data: cp },
+        { data: fd },
+        { data: wlRows },
+      ] = await Promise.all([
+        supabase.from('checkins').select('*').eq('client_id', params.id).order('week_starting', { ascending: false }),
+        supabase.from('client_programs').select('programs(id, name)').eq('client_id', params.id).eq('is_active', true).single(),
+        supabase.from('food_diary').select('*').eq('client_id', params.id).order('diary_date', { ascending: false }).limit(14),
+        supabase.from('workout_logs').select('id, logged_at, program_days(name)').eq('client_id', params.id).order('logged_at', { ascending: false }),
+      ])
+
       setCheckins(ci ?? [])
-
-      const { data: cp } = await supabase
-        .from('client_programs')
-        .select('programs(id, name)')
-        .eq('client_id', params.id)
-        .eq('is_active', true)
-        .single()
       setProgram((cp?.programs as any) ?? null)
-
-      const { data: fd } = await supabase
-        .from('food_diary')
-        .select('*')
-        .eq('client_id', params.id)
-        .order('diary_date', { ascending: false })
-        .limit(14)
       setFoodDiary(fd ?? [])
-
-      // Workout logs + personal bests
-      const { data: wlRows } = await supabase
-        .from('workout_logs')
-        .select('id, logged_at, program_days(name)')
-        .eq('client_id', params.id)
-        .order('logged_at', { ascending: false })
 
       const allLogIds = (wlRows ?? []).map((w: any) => w.id)
       let allSetLogs: any[] = []
