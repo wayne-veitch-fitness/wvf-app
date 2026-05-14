@@ -238,6 +238,17 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
     setShowEdit(false)
   }
 
+  async function handleDelete() {
+    if (!confirm(`Permanently delete ${name}?\n\nThis will remove all their check-ins, workouts, food diary entries, and login access. This cannot be undone.`)) return
+    const res = await fetch(`/api/coach/clients/${params.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      router.push('/coach/clients')
+    } else {
+      const json = await res.json()
+      alert(`Could not delete client: ${json.error}`)
+    }
+  }
+
   async function handleToggleActive() {
     const newState = !client.is_active
     const msg = newState ? 'Reactivate this client?' : 'Deactivate this client? They will no longer appear in the active list.'
@@ -526,6 +537,14 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
                 className="flex-1 bg-[var(--accent)] text-white rounded-lg py-2.5 text-sm font-semibold disabled:opacity-40"
               >
                 {savingEdit ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+            <div className="mt-5 pt-4 border-t border-[var(--border)]">
+              <button
+                onClick={handleDelete}
+                className="w-full py-2.5 text-sm font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Delete client permanently
               </button>
             </div>
           </div>
