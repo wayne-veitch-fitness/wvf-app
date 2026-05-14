@@ -67,19 +67,17 @@ export function welcomeEmailHtml({
 
     <!-- Login credentials -->
     <div style="background:#20243D;border-radius:12px;padding:20px 24px;margin-bottom:28px;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.5);margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.5);margin-bottom:14px;">
         Your login details
       </div>
-      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:16px;">
-        <tr>
-          <td style="width:72px;font-size:12px;color:rgba(255,255,255,0.5);padding-bottom:6px;">Email</td>
-          <td style="font-size:14px;font-weight:600;color:white;padding-bottom:6px;">${email}</td>
-        </tr>
-        <tr>
-          <td style="font-size:12px;color:rgba(255,255,255,0.5);">Password</td>
-          <td style="font-size:14px;font-weight:600;color:white;font-family:monospace,monospace;">${password}</td>
-        </tr>
-      </table>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:3px;">Email</div>
+        <div style="font-size:14px;font-weight:600;color:white;word-break:break-all;">${email}</div>
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:3px;">Password</div>
+        <div style="font-size:14px;font-weight:600;color:white;font-family:monospace,monospace;letter-spacing:0.05em;">${password}</div>
+      </div>
       <a href="${appUrl}" style="display:block;background:white;color:#20243D;text-align:center;padding:12px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
         Open the app →
       </a>
