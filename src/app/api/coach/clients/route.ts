@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: clientErr.message }, { status: 400 })
   }
 
-  // Send welcome email — fire and forget so it doesn't block the response
-  sendEmail({
+  // Send welcome email
+  await sendEmail({
     to: email,
     subject: `Welcome to Wayne Veitch Fitness 🎉`,
     html: welcomeEmailHtml({
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       password,
       appUrl: APP_URL,
     }),
-  }).catch(err => console.error('Welcome email failed:', err))
+  })
 
   return NextResponse.json({ clientId: clientRow.id })
 }
