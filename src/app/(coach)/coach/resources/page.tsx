@@ -89,10 +89,18 @@ export default function ResourcesPage() {
 
   // Upload
   const [uploading,        setUploading]        = useState<Record<string, boolean>>({})
-  const [dragOver,         setDragOver]         = useState<string | null>(null)   // folderId being dragged over
+  const [dragOver,         setDragOver]         = useState<string | null>(null)
   const [pending,          setPending]          = useState<PendingUpload | null>(null)
   const [pendingName,      setPendingName]      = useState('')
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  // Edit resource
+  const [editResource,     setEditResource]     = useState<Resource | null>(null)
+  const [editName,         setEditName]         = useState('')
+  const [editFile,         setEditFile]         = useState<File | null>(null)
+  const [editDragOver,     setEditDragOver]     = useState(false)
+  const [savingEdit,       setSavingEdit]       = useState(false)
+  const editFileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -164,6 +172,46 @@ export default function ResourcesPage() {
 
     await supabase.from('resources').insert({ folder_id: folderId, name: finalName, storage_path: path })
     setUploading(prev => ({ ...prev, [folderId]: false }))
+    await loadData()
+  }
+
+  // ── Edit an existing resource (rename and/or replace file) ───────────────────
+  function openEdit(r: Resource) {
+    setEditResource(r)
+    setEditName(nameWithoutExtension(r.name))
+    setEditFile(null)
+  }
+
+  async function saveEdit() {
+    if (!editResource) return
+    setSavingEdit(true)
+
+    let newPath = editResource.storage_path
+
+    // If a replacement file was chosen, upload it and delete the old one
+    if (editFile) {
+      const sanitized = editFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      newPath = `${editResource.folder_id}/${Date.now()}_${sanitized}`
+      const { error } = await supabase.storage.from('resources').upload(newPath, editFile, { upsert: false })
+      if (error) {
+        alert(`Upload failed: ${error.message}`)
+        setSavingEdit(false)
+        return
+      }
+      await supabase.storage.from('resources').remove([editResource.storage_path])
+    }
+
+    // Build final display name: use edited name + extension from new file or keep existing extension
+    const sourceFilename = editFile ? editFile.name : editResource.name
+    const ext = sourceFilename.includes('.') ? sourceFilename.slice(sourceFilename.lastIndexOf('.')) : ''
+    const base = editName.trim() || nameWithoutExtension(editResource.name)
+    const finalName = base.toLowerCase().endsWith(ext.toLowerCase()) ? base : `${base}${ext}`
+
+    await supabase.from('resources').update({ name: finalName, storage_path: newPath }).eq('id', editResource.id)
+
+    setSavingEdit(false)
+    setEditResource(null)
+    setEditFile(null)
     await loadData()
   }
 
@@ -291,6 +339,7 @@ export default function ResourcesPage() {
         <span className="text-sm flex-1 truncate">{r.name}</span>
         <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={() => handleOpen(r.storage_path)} className="text-xs text-[var(--accent)] font-medium hover:underline">Open</button>
+          <button onClick={() => openEdit(r)} className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] font-medium">Edit</button>
           <button onClick={() => handleDeleteResource(r)} className="text-xs text-red-500 hover:text-red-700">Delete</button>
         </div>
       </div>
@@ -501,6 +550,92 @@ export default function ResourcesPage() {
                 className="flex-1 bg-[var(--accent)] text-white rounded-lg py-2.5 text-sm font-semibold disabled:opacity-40"
               >
                 {savingCategory ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit resource modal ───────────────────────────────────────────── */}
+      {editResource && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setEditResource(null); setEditFile(null) }} />
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 shadow-xl">
+            <h2 className="text-base font-bold mb-1">Edit resource</h2>
+            <p className="text-xs text-[var(--text-muted)] mb-5 truncate">{editResource.name}</p>
+
+            <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
+              Display name
+            </label>
+            <input
+              type="text"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveEdit() }}
+              className="w-full border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] mb-4"
+              autoFocus
+            />
+
+            <label className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
+              Replace file <span className="normal-case font-normal text-[var(--text-subtle)]">— optional</span>
+            </label>
+
+            {/* Hidden file input for edit */}
+            <input
+              ref={editFileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.mp4,.mov"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setEditFile(f); if (e.target) e.target.value = '' }}
+            />
+
+            <div
+              onDragOver={e => { e.preventDefault(); setEditDragOver(true) }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setEditDragOver(false) }}
+              onDrop={e => { e.preventDefault(); setEditDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) setEditFile(f) }}
+              onClick={() => editFileInputRef.current?.click()}
+              className={`flex items-center gap-3 border-2 border-dashed rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                editDragOver
+                  ? 'border-[var(--accent)] bg-blue-50'
+                  : editFile
+                  ? 'border-green-300 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <UploadIcon />
+              <div className="flex-1 min-w-0">
+                {editFile ? (
+                  <>
+                    <div className="text-sm font-medium text-green-700 truncate">{editFile.name}</div>
+                    <div className="text-xs text-green-600">{formatBytes(editFile.size)} · click to change</div>
+                  </>
+                ) : (
+                  <div className="text-sm text-[var(--text-muted)]">Drop a new file here, or click to browse</div>
+                )}
+              </div>
+              {editFile && (
+                <button
+                  onClick={e => { e.stopPropagation(); setEditFile(null) }}
+                  className="text-xs text-[var(--text-subtle)] hover:text-red-500 flex-shrink-0"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setEditResource(null); setEditFile(null) }}
+                className="flex-1 border border-[var(--border)] rounded-lg py-2.5 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit || !editName.trim()}
+                className="flex-1 bg-[var(--accent)] text-white rounded-lg py-2.5 text-sm font-semibold disabled:opacity-40"
+              >
+                {savingEdit ? 'Saving...' : 'Save changes'}
               </button>
             </div>
           </div>
